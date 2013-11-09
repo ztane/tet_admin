@@ -1,6 +1,10 @@
 from pyramid.view import view_config
 from sqlalchemy import orm
+from liilak.model import DBSession
+from paginate import Page
+import paginate
 import operator
+
 
 class SaAdminGenerator(object):
     def __init__(self, *a, **kw):
@@ -93,7 +97,18 @@ def root_view(context, request):
 
 @view_config(name='', route_name='sa-pyramid-admin.main', context=ModelNode, renderer='tet_admin:templates/model-root.pt')
 def model_view(context, request):
-    return dict(model_data=context.model_data)
+    page_number = request.GET.get('page', '1')
+
+    try:
+        page_number = int(page_number)
+    except:
+        page_number = 1
+
+    model = context.model_data.class_
+    page = SqlalchemyOrmPage(DBSession.query(model), page=page_number)
+
+    pager = page.pager(url=request.path_url + "?page=$page")
+    return dict(model_data=context.model_data, pager=pager, items=page.items)
 
 
 class SaPyramidAdminGenerator(SaAdminGenerator):
@@ -109,3 +124,24 @@ class SaPyramidAdminGenerator(SaAdminGenerator):
 
     def root_factory(self, request):
         return RootNode(request, self.admin_data)
+
+
+class SqlalchemyOrmWrapper(object):
+    """Wrapper class to access elements of a collection."""
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __getitem__(self, range):
+        # Return a range of objects of an sqlalchemy.orm.query.Query object
+        return self.obj[range]
+
+    def __len__(self):
+        # Count the number of objects in an sqlalchemy.orm.query.Query object
+        return self.obj.count()
+
+
+class SqlalchemyOrmPage(paginate.Page):
+    """A pagination page that deals with SQLAlchemy ORM objects."""
+    def __init__(self, *args, **kwargs):
+        super(SqlalchemyOrmPage, self).__init__(*args, wrapper_class=SqlalchemyOrmWrapper, **kwargs)
+

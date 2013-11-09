@@ -23,6 +23,11 @@
 
     <div id="middle">
        <h1>Admin for ${model_data.pretty_name}</h1>
+
+       <table>
+         <tr tal:repeat="item items"><td>${item.idea_id}</td></tr>
+       </table>
+       ${structure: pager}
     </div>
   </div>
 </body>
