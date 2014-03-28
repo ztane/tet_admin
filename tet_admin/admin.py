@@ -1,5 +1,5 @@
 from pyramid.view import view_config
-from sqlalchemy import orm
+from sqlalchemy import orm, inspect
 from liilak.model import DBSession
 from paginate import Page
 import paginate
@@ -138,6 +138,46 @@ class SqlalchemyOrmWrapper(object):
     def __len__(self):
         # Count the number of objects in an sqlalchemy.orm.query.Query object
         return self.obj.count()
+
+
+try:
+    unicode
+except:
+    unicode = str
+
+import uuid
+import datetime
+
+encoders = {
+    int: int,
+    bytes: lambda b: binascii.hexlify(b).decode('ascii'),
+    unicode: unicode,
+    uuid.UUID: str,
+    datetime: str
+}
+
+decoders = {
+    int: int,
+    bytes: lambda v: binascii.unhexlify(v.encode('ascii')),
+    unicode: unicode,
+    uuid.UUID: uuid.UUID
+}
+
+class DefaultKeyDeriver(object):
+    def __init__(self, class_):
+        self.class_ = class_
+        mapper = inspect(class_)
+        primary_key_columns = mapper.primary_key
+        pk_types = [ i.type.python_type for i in primary_key_columns ]
+        for i in pk_types:
+            if i not in encoders:
+                raise ValueError("Unable to generate urls for primary key column type %s")
+
+    def encode_key(self, instance):
+        rv = []
+
+    def decode_key(self, key):
+        pass
 
 
 class SqlalchemyOrmPage(paginate.Page):
